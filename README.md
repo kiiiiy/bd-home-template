@@ -57,8 +57,9 @@ OCI 콘솔에서 가상 클라우드 네트워크(VCN) -> 보안 리스트(Secur
 
 이 템플릿을 클론합니다
 
-git clone https://github.com/사용자이름/bd-homepage.git
-cd bd-homepage
+- git clone https://github.com/사용자이름/bd-homepage.git
+- cd bd-homepage
+
 초기화 스크립트를 실행합니다 (GitHub CLI 로그인이 필요할 수 있습니다)
 
 
