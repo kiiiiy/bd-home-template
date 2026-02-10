@@ -17,12 +17,6 @@ bd-home-template/
 
 
 
-⚠️ backend/, frontend/는 스크립트 실행 시 자동 생성됩니다.
-
-⚠️ 스크립트 실행 시 GitHub 또는 Fly.io에 로그인되어 있지 않으면 자동으로 로그인 안내가 표시되며, 최초 1회 인증 후 계속 진행됩니다.
-
-
-
 
 ***사용 방법**
 
@@ -30,62 +24,42 @@ bd-home-template/
 
 GitHub 계정
 
-Fly.io 계정 (무료)
+Oracle Cloud (OCI) 계정 및 VM 생성 완료
 
-WSL 또는 Linux/macOS 환경
-
+GitHub Secrets에 OCI_HOST, OCI_SSH_KEY 등 등록 (상세 내용은 아래 참조)
 
 1️⃣ 템플릿 clone
 
 git clone https://github.com/<owner>/bd-home-template.git
-
 cd bd-home-template
 
+2️⃣ 서버 초기 세팅 (최초 1회)
 
-2️⃣ 스크립트 실행 권한 부여
-
-chmod +x scripts/*.sh
+GitHub Actions 탭 이동 → OCI Bootstrap 워크플로우 실행
 
 
-3️⃣ 운영 레포 / 앱 이름 지정 후 실행
+3️⃣ 코드 배포
 
-export OPS_REPO="bd-home-<깃허브 아이디나 원하는 단어..>"
-
-export FLY_APP="bd-homepage-<위와 동일>"
-
-./scripts/bootstrap_owner.sh
-
+main 브랜치에 push 하면 자동으로 백엔드가 빌드되어 OCI VM으로 전송됩니다.
 
 4️⃣ 배포 확인
 
-GitHub Actions 탭에서 모두 초록 표시(✅) 인지 확인
+백엔드(OCI): http://<OCI-공용-IP>:8080/api/health
 
-⚠️ 만일 fly-backend.yml은 초록 표시 뜨는데 pages-frontend.yml만 에러 날 경우 pages 설정 문제!
+프론트엔드(GitHub Pages): https://<github-id>.github.io/<repo-name>/
 
-settings -> pages -> Build and deployment -> Source를 Github Actions로 변경 
-
-이 경우 90% 문제 해결됨
-
-
-
-***배포 결과물**
-
-스크립트 실행 후 아래 두 개가 자동으로 생성됩니다.
-
-1️⃣ 프론트엔드 (GitHub Pages)
-
-URL 예시: https://<github-id>.github.io/<repo-name>/
-
-2️⃣ 백엔드 (Fly.io)
-
-Health Check 엔드포인트: https://<fly-app-name>.fly.dev/api/health
+**Secrets 목록**
+- `OCI_HOST` : VM 공인 IP
+- `OCI_SSH_USER` : 보통 `ubuntu`
+- `OCI_SSH_PRIVATE_KEY` : private key 전체(-----BEGIN ... END-----)
+- `OCI_SSH_PORT` : (선택) 기본 22면 없어도 됨
+- `JWT_SECRET`
+- `ADMIN_PASSWORD_HASH`
 
 
+***Dev Stack**
 
-
-***Dev Stack **
-
-Backend: Spring Boot + Fly.io
+Backend: Spring Boot + OCI
 
 Frontend: HTML / JS + GitHub Pages
 
