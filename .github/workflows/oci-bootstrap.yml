@@ -1,0 +1,39 @@
+name: OCI Bootstrap (one-time setup)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload bootstrap script
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_SSH_USER }}
+          key: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.OCI_SSH_PORT || 22 }}
+          source: "scripts/oci_bootstrap.sh"
+          target: "/tmp/bd-home-bootstrap"
+
+      - name: Run bootstrap on VM
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_SSH_USER }}
+          key: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.OCI_SSH_PORT || 22 }}
+          script: |
+            set -e
+            chmod +x /tmp/bd-home-bootstrap/scripts/oci_bootstrap.sh
+            export JWT_SECRET="${JWT_SECRET}"
+            export ADMIN_PASSWORD_HASH="${ADMIN_PASSWORD_HASH}"
+            /tmp/bd-home-bootstrap/scripts/oci_bootstrap.sh
+            sudo systemctl --no-pager --full status bd-home | head -n 80 || true

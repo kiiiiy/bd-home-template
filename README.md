@@ -17,75 +17,110 @@ bd-home-template/
 
 
 
-⚠️ backend/, frontend/는 스크립트 실행 시 자동 생성됩니다.
-
-⚠️ 스크립트 실행 시 GitHub 또는 Fly.io에 로그인되어 있지 않으면 자동으로 로그인 안내가 표시되며, 최초 1회 인증 후 계속 진행됩니다.
-
-
-
 
 ***사용 방법**
 
-0️⃣ 사전 준비
+**Step 1: OCI 가상 컴퓨터(VM) 준비**
 
-GitHub 계정
+Oracle Cloud에 가입하고 로그인합니다
 
-Fly.io 계정 (무료)
+인스턴스 생성을 클릭합니다
 
-WSL 또는 Linux/macOS 환경
+- OS: Ubuntu 22.04 또는 24.04 (최소 사양도 가능)
 
+- 네트워킹: '공용 IP 주소 할당'을 반드시 체크하세요.
 
-1️⃣ 템플릿 clone
+- SSH 키: '전용 키 저장'을 눌러 .key 파일을 컴퓨터에 잘 보관하세요. (매우 중요!)
 
-git clone https://github.com/<owner>/bd-home-template.git
-
-cd bd-home-template
-
-
-2️⃣ 스크립트 실행 권한 부여
-
-chmod +x scripts/*.sh
+생성된 인스턴스의 공용 IP 주소를 복사해둡니다
 
 
-3️⃣ 운영 레포 / 앱 이름 지정 후 실행
+**Step 2: 방화벽(포트) 열기**
 
-export OPS_REPO="bd-home-<깃허브 아이디나 원하는 단어..>"
+백엔드 서버(8080 포트)에 접속할 수 있도록 문을 열어줘야 합니다
 
-export FLY_APP="bd-homepage-<위와 동일>"
-
-./scripts/bootstrap_owner.sh
+OCI 콘솔에서 가상 클라우드 네트워크(VCN) -> 보안 리스트(Security List)로 들어갑니다
 
 
-4️⃣ 배포 확인
+수신 규칙(Ingress Rule)을 추가합니다
 
-GitHub Actions 탭에서 모두 초록 표시(✅) 인지 확인
+소스 CIDR: 0.0.0.0/0
 
-⚠️ 만일 fly-backend.yml은 초록 표시 뜨는데 pages-frontend.yml만 에러 날 경우 pages 설정 문제!
+대상 포트 범위: 8080
 
-settings -> pages -> Build and deployment -> Source를 Github Actions로 변경 
-
-이 경우 90% 문제 해결됨
+설명: Backend API
 
 
+**Step 3: 나만의 운영 레포지토리 생성 (초기 설정)**
 
-***배포 결과물**
+이제 본인의 컴퓨터 터미널(WSL, Linux, Mac 등)에서 아래 명령어를 순서대로 입력하세요
 
-스크립트 실행 후 아래 두 개가 자동으로 생성됩니다.
+이 템플릿을 클론합니다
 
-1️⃣ 프론트엔드 (GitHub Pages)
+- git clone https://github.com/사용자이름/bd-homepage.git
+- cd bd-homepage
 
-URL 예시: https://<github-id>.github.io/<repo-name>/
-
-2️⃣ 백엔드 (Fly.io)
-
-Health Check 엔드포인트: https://<fly-app-name>.fly.dev/api/health
+초기화 스크립트를 실행합니다 (GitHub CLI 로그인이 필요할 수 있습니다)
 
 
+- chmod +x scripts/bootstrap_owner_oci.sh
+- ./scripts/bootstrap_owner_oci.sh
 
 
-***Dev Stack **
+스크립트가 물어보는 OCI_HOST(IP), SSH 키 경로 등을 입력하면, 본인의 GitHub 계정에 새 레포지토리가 생성되고 모든 Secrets가 자동으로 세팅됩니다
 
-Backend: Spring Boot + Fly.io
+
+**Step 4: 서버 기초 공사 (Bootstrap)**
+
+생성된 본인의 GitHub 레포지토리 페이지로 이동합니다
+
+상단의 [Actions] 탭을 클릭합니다
+
+왼쪽 메뉴에서 **OCI Bootstrap (one-time setup)**을 선택합니다
+
+오른쪽의 Run workflow 버튼을 클릭하여 실행합니다
+
+이 과정에서 서버에 Java 17이 설치되고 백엔드 구동 환경이 완벽하게 세팅됩니다
+
+
+**Step 5: 코드 푸시 및 배포 확인**
+
+이제 코드를 수정하고 푸시하기만 하면 됩니다
+
+본인의 레포지토리에 코드를 푸시합니다
+
+- git add .
+- git commit -m "First deploy"
+- git push origin main
+
+
+[Actions] 탭의 Deploy Backend to OCI VM 워크플로우가 초록색(✅)으로 변하는지 확인합니다
+
+브라우저에서 사이트가 잘 뜨는지 확인합니다!
+
+- API 서버: http://<내-OCI-IP>:8080/api/health
+
+- 프론트엔드: https://<내-아이디>.github.io/<레포이름>/
+
+
+
+💡 **접속이 안 되나요?** OCI 방화벽(8080)을 열었는지 다시 확인
+
+💡 **배포가 실패했나요?** GitHub Secrets에 OCI_SSH_PRIVATE_KEY 내용이 올바르게 들어갔는지 확인하세요 (-----BEGIN RSA PRIVATE KEY-----부터 끝까지 모두 포함되어야 합니다)
+
+
+**Secrets 목록**
+- `OCI_HOST` : VM 공인 IP
+- `OCI_SSH_USER` : 보통 `ubuntu`
+- `OCI_SSH_PRIVATE_KEY` : private key 전체(-----BEGIN ... END-----)
+- `OCI_SSH_PORT` : (선택) 기본 22면 없어도 됨
+- `JWT_SECRET`
+- `ADMIN_PASSWORD_HASH`
+
+
+***Dev Stack**
+
+Backend: Spring Boot + OCI
 
 Frontend: HTML / JS + GitHub Pages
 

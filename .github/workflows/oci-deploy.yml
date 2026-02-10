@@ -1,0 +1,55 @@
+name: Deploy Backend to OCI VM
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - "backend/**"
+      - ".github/workflows/oci-deploy.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Build bootJar
+        run: ./gradlew clean bootJar -x test
+
+      - name: Upload jar to OCI VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_SSH_USER }}
+          key: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.OCI_SSH_PORT || 22 }}
+          source: "backend/build/libs/*.jar"
+          target: "/tmp/bd-home-deploy"
+
+      - name: Install jar & restart service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_SSH_USER }}
+          key: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.OCI_SSH_PORT || 22 }}
+          script: |
+            set -e
+            JAR_PATH=$(find /tmp/bd-home-deploy -name "*.jar" | head -n 1)
+            sudo mkdir -p /opt/bd-home
+            sudo cp "$JAR_PATH" /opt/bd-home/app.jar
+            sudo chown bdhome:bdhome /opt/bd-home/app.jar
+            sudo systemctl restart bd-home
+            sleep 2
+            sudo systemctl status bd-home --no-pager
